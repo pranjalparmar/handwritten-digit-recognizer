@@ -43,8 +43,10 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
       - name: Log in to ACR
-        run: echo "${{ secrets.AZURE_REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY_NAME }}.azurecr.io \
+        run: |
+            echo "${{ secrets.AZURE_REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY_NAME }}.azurecr.io \
               --username ${{ secrets.AZURE_REGISTRY_USERNAME }} --password-stdin
+        
       
       - name: Build Docker image locally
         run: docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }} .

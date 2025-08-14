@@ -44,15 +44,19 @@ jobs:
       
       - name: Log in to ACR
         run: |
-            echo "${{ secrets.AZURE_REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY_NAME }}.azurecr.io \
-              --username ${{ secrets.AZURE_REGISTRY_USERNAME }} --password-stdin
+          echo "${{ secrets.AZURE_REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY_NAME }}.azurecr.io \
+            --username ${{ secrets.AZURE_REGISTRY_USERNAME }} --password-stdin
         
+      - name: Build and tag Docker image
+        run: |
+          docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }} .
+          docker tag ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }} \
+                     ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:latest
       
-      - name: Build Docker image locally
-        run: docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }} .
-      
-      - name: Push Docker image to ACR
-        run: docker push ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }}
+      - name: Push Docker images to ACR
+        run: |
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }}
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:latest
       
       - name: Deploy to Container Instances
         run: |
@@ -60,11 +64,11 @@ jobs:
           az container delete --resource-group ${{ env.RESOURCE_GROUP }} \
             --name ${{ env.CONTAINER_NAME }} --yes || true
           
-          # Create new container
+          # Create new container (using the latest tag)
           az container create \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --name ${{ env.CONTAINER_NAME }} \
-            --image ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }} \
+            --image ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:latest \
             --cpu 1 \
             --memory 2 \
             --os-type Linux \

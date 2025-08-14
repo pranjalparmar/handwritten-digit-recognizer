@@ -54,9 +54,6 @@ jobs:
       - name: Push Docker image to ACR
         run: docker push ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }}
       
-      - name: Register Container Instance provider
-        run: az provider register --namespace Microsoft.ContainerInstance
-      
       - name: Deploy to Container Instances
         run: |
           # Delete existing container if it exists

@@ -1,0 +1,75 @@
+name: Build and Deploy to Azure Container Instances
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY_NAME: 'pranjalRegistry'  # Replace with your registry name
+  RESOURCE_GROUP: 'free-tier'
+  CONTAINER_NAME: 'digit-recognition-container'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio httpx
+    
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Build and push to ACR
+      run: |
+        az acr build --registry ${{ env.REGISTRY_NAME }} \
+          --image digit-recognition:${{ github.sha }} .
+    
+    - name: Deploy to Container Instances
+      run: |
+        # Delete existing container if it exists
+        az container delete --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.CONTAINER_NAME }} --yes || true
+        
+        # Create new container
+        az container create \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.CONTAINER_NAME }} \
+          --image ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }} \
+          --cpu 1 \
+          --memory 2 \
+          --registry-login-server ${{ env.REGISTRY_NAME }}.azurecr.io \
+          --registry-username ${{ secrets.AZURE_REGISTRY_USERNAME }} \
+          --registry-password ${{ secrets.AZURE_REGISTRY_PASSWORD }} \
+          --dns-name-label digit-recognition-${{ github.run_number }} \
+          --ports 8000 \
+          --restart-policy Always
+    
+    - name: Get Container URL
+      run: |
+        URL=$(az container show --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.CONTAINER_NAME }} --query ipAddress.fqdn -o tsv)
+        echo "🚀 Your app is deployed at: http://$URL:8000"
+        echo "📚 API Documentation: http://$URL:8000/docs"

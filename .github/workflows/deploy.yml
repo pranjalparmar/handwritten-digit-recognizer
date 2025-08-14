@@ -67,6 +67,7 @@ jobs:
             --image ${{ env.REGISTRY_NAME }}.azurecr.io/digit-recognition:${{ github.sha }} \
             --cpu 1 \
             --memory 2 \
+            --os-type Linux \
             --registry-login-server ${{ env.REGISTRY_NAME }}.azurecr.io \
             --registry-username ${{ secrets.AZURE_REGISTRY_USERNAME }} \
             --registry-password ${{ secrets.AZURE_REGISTRY_PASSWORD }} \
